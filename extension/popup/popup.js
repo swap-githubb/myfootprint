@@ -1,179 +1,132 @@
-const API_BASE = 'http://localhost:5000/api';
+// DOM Elements
+const loginView = document.getElementById('login-view');
+const summaryView = document.getElementById('summary-view');
+const appFooter = document.getElementById('app-footer');
+const loginForm = document.getElementById('login-form');
+const loginBtn = document.getElementById('login-btn');
+const loginError = document.getElementById('login-error');
+const summarizeBtn = document.getElementById('summarize-btn');
+const pageInfo = document.getElementById('page-info');
+const statusMessage = document.getElementById('status-message');
+const usernameDisplay = document.getElementById('username-display');
+const logoutBtn = document.getElementById('logout-btn');
 
-document.addEventListener('DOMContentLoaded', () => {
-  checkAuthStatus();
-  checkModelStatus();
-  
-  document.getElementById('login-btn').addEventListener('click', handleLogin);
-  document.getElementById('register-btn').addEventListener('click', handleRegister);
-  document.getElementById('logout-btn').addEventListener('click', handleLogout);
-  document.getElementById('view-profile-btn').addEventListener('click', viewProfile);
-  document.getElementById('show-register').addEventListener('click', showRegister);
-  document.getElementById('show-login').addEventListener('click', showLogin);
+const API_BASE_URL = "http://localhost:8000";
+let currentPageInfo = null;
+
+// --- Helper Functions ---
+function showSpinner(button, show = true) {
+    const spinner = button.querySelector('.spinner');
+    const text = button.querySelector('.btn-text');
+    if (show) {
+        spinner.style.display = 'block';
+        if (text) text.style.display = 'none';
+        button.disabled = true;
+    } else {
+        spinner.style.display = 'none';
+        if (text) text.style.display = 'block';
+        button.disabled = false;
+    }
+}
+
+function setStatus(message, type = 'info') {
+    statusMessage.textContent = message;
+    statusMessage.className = type; // 'success', 'error', or ''
+}
+
+// --- Page Analysis ---
+async function analyzeCurrentPage() {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (!tab.url || !tab.url.startsWith('http')) {
+        pageInfo.innerHTML = `<p>Cannot summarize this page.</p>`;
+        summarizeBtn.disabled = true;
+        return;
+    }
+    
+    // Inject script to detect content type
+    const [injectionResult] = await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        function: () => {
+            const hasArticle = !!document.querySelector('article, [role="article"]');
+            const hasVideo = !!document.querySelector('video');
+            if (hasVideo) return 'video';
+            if (hasArticle) return 'article';
+            // Fallback: check text length
+            return document.body.innerText.length > 2000 ? 'article' : null;
+        }
+    });
+
+    const contentType = injectionResult.result;
+
+    if (contentType) {
+        pageInfo.innerHTML = `<p>Found a potential <b>${contentType}</b> to summarize.</p>`;
+        summarizeBtn.disabled = false;
+        currentPageInfo = { tab, contentType };
+    } else {
+        pageInfo.innerHTML = `<p>No article or video found on this page.</p>`;
+        summarizeBtn.disabled = true;
+    }
+}
+
+// --- Event Handlers ---
+document.addEventListener('DOMContentLoaded', async () => {
+    const { token } = await chrome.storage.local.get("token");
+    if (token) {
+        loginView.style.display = 'none';
+        summaryView.style.display = 'block';
+        appFooter.style.display = 'flex';
+        // A real app would decode the JWT to get username, but this is fine for now
+        usernameDisplay.textContent = 'user';
+        await analyzeCurrentPage();
+    }
 });
 
-async function checkAuthStatus() {
-  const data = await chrome.storage.local.get(['userId', 'apiToken', 'userName']);
-  
-  if (data.userId && data.apiToken) {
-    showStatus(data.userName);
-    loadContentCount();
-  } else {
-    showLogin();
-  }
-}
+loginForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    showSpinner(loginBtn);
+    loginError.textContent = '';
+    
+    const username = document.getElementById('username').value;
+    const password = document.getElementById('password').value;
+    const formData = new URLSearchParams({ username, password });
 
-function showLogin() {
-  document.getElementById('login-section').classList.remove('hidden');
-  document.getElementById('register-section').classList.add('hidden');
-  document.getElementById('status-section').classList.add('hidden');
-  clearMessage();
-}
+    try {
+        const res = await fetch(`${API_BASE_URL}/token`, { method: 'POST', body: formData });
+        if (!res.ok) throw new Error('Invalid username or password.');
+        const data = await res.json();
+        await chrome.storage.local.set({ token: data.access_token });
+        window.location.reload(); // Reload popup to switch views
+    } catch (err) {
+        loginError.textContent = err.message;
+        showSpinner(loginBtn, false);
+    }
+});
 
-function showRegister() {
-  document.getElementById('login-section').classList.add('hidden');
-  document.getElementById('register-section').classList.remove('hidden');
-  document.getElementById('status-section').classList.add('hidden');
-  clearMessage();
-}
+logoutBtn.addEventListener('click', async () => {
+    await chrome.storage.local.remove("token");
+    window.location.reload();
+});
 
-function showStatus(userName) {
-  document.getElementById('login-section').classList.add('hidden');
-  document.getElementById('register-section').classList.add('hidden');
-  document.getElementById('status-section').classList.remove('hidden');
-  document.getElementById('user-name').textContent = `Logged in as: ${userName}`;
-}
+summarizeBtn.addEventListener('click', async () => {
+    if (!currentPageInfo) return;
+    
+    showSpinner(summarizeBtn);
+    setStatus('Initializing model...');
 
-async function handleLogin() {
-  const email = document.getElementById('email').value;
-  const password = document.getElementById('password').value;
-  
-  if (!email || !password) {
-    showMessage('Please fill in all fields', 'error');
-    return;
-  }
-  
-  try {
-    const response = await fetch(`${API_BASE}/auth/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password })
+    chrome.runtime.sendMessage({ type: 'summarize', payload: currentPageInfo }, (response) => {
+        if (response.success) {
+            setStatus('Saved to your list!', 'success');
+        } else {
+            setStatus(response.error || 'An unknown error occurred.', 'error');
+        }
+        showSpinner(summarizeBtn, false);
+        summarizeBtn.disabled = true; // Prevent re-summarizing
     });
-    
-    const data = await response.json();
-    
-    if (response.ok) {
-      await chrome.storage.local.set({
-        userId: data.userId,
-        apiToken: data.token,
-        userName: data.name
-      });
-      
-      showStatus(data.name);
-      loadContentCount();
-      showMessage('Login successful!', 'success');
-    } else {
-      showMessage(data.message || 'Login failed', 'error');
+});
+
+// Listener for progress from background script
+chrome.runtime.onMessage.addListener((message) => {
+    if (message.type === "progress") {
+        setStatus(message.data);
     }
-  } catch (error) {
-    showMessage('Network error. Please try again.', 'error');
-  }
-}
-
-async function handleRegister() {
-  const name = document.getElementById('reg-name').value;
-  const email = document.getElementById('reg-email').value;
-  const password = document.getElementById('reg-password').value;
-  
-  if (!name || !email || !password) {
-    showMessage('Please fill in all fields', 'error');
-    return;
-  }
-  
-  try {
-    const response = await fetch(`${API_BASE}/auth/register`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, email, password })
-    });
-    
-    const data = await response.json();
-    
-    if (response.ok) {
-      showMessage('Registration successful! Please login.', 'success');
-      showLogin();
-    } else {
-      showMessage(data.message || 'Registration failed', 'error');
-    }
-  } catch (error) {
-    showMessage('Network error. Please try again.', 'error');
-  }
-}
-
-async function handleLogout() {
-  await chrome.storage.local.remove(['userId', 'apiToken', 'userName']);
-  showLogin();
-  showMessage('Logged out successfully', 'success');
-}
-
-async function loadContentCount() {
-  const data = await chrome.storage.local.get(['apiToken']);
-  
-  try {
-    const response = await fetch(`${API_BASE}/content/count`, {
-      headers: { 'Authorization': `Bearer ${data.apiToken}` }
-    });
-    
-    if (response.ok) {
-      const result = await response.json();
-      document.getElementById('content-count').textContent = 
-        `Content tracked: ${result.count} items`;
-    }
-  } catch (error) {
-    console.error('Error loading content count:', error);
-  }
-}
-
-function viewProfile() {
-  chrome.tabs.create({ url: 'http://localhost:3000/profile' });
-}
-
-function showMessage(text, type) {
-  const messageEl = document.getElementById('message');
-  messageEl.textContent = text;
-  messageEl.className = `message ${type}`;
-  setTimeout(clearMessage, 3000);
-}
-
-function clearMessage() {
-  const messageEl = document.getElementById('message');
-  messageEl.textContent = '';
-  messageEl.className = 'message';
-}
-
-async function checkModelStatus() {
-  const statusEl = document.getElementById('model-status');
-  const statusText = document.getElementById('model-status-text');
-  const progressBar = document.querySelector('.progress-fill');
-  
-  const modelStatus = await chrome.storage.local.get(['modelLoaded', 'modelProgress']);
-  
-  if (modelStatus.modelLoaded) {
-    statusText.textContent = '✅ AI Model ready';
-    statusEl.classList.remove('loading');
-  } else {
-    statusText.textContent = '⏳ AI Model will load when you visit a content page';
-    if (modelStatus.modelProgress) {
-      statusEl.classList.add('loading');
-      progressBar.style.width = modelStatus.modelProgress + '%';
-    }
-  }
-}
-
-chrome.storage.onChanged.addListener((changes, namespace) => {
-  if (namespace === 'local') {
-    if (changes.modelLoaded || changes.modelProgress) {
-      checkModelStatus();
-    }
-  }
 });
