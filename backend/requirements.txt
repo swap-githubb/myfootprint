@@ -4,3 +4,7 @@ pydantic
 motor
 passlib
 python-jose
+python-multipart
+pydantic[email]
+pydantic_settings
+python-dotenv

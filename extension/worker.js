@@ -1,7 +1,7 @@
-import { WebWorkerMLCEngineHandler } from "./lib/web-llm.js";
+// import { WebWorkerMLCEngineHandler } from "./lib/web-llm.js";
 
-// This is the entry point for the web worker
-const handler = new WebWorkerMLCEngineHandler();
-self.onmessage = msg => {
-  handler.onmessage(msg);
-};
+// // This is the entry point for the web worker
+// const handler = new WebWorkerMLCEngineHandler();
+// self.onmessage = msg => {
+//   handler.onmessage(msg);
+// };
