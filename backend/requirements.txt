@@ -2,9 +2,10 @@ fastapi
 uvicorn
 pydantic
 motor
-passlib
+passlib[bcrypt]==1.7.4
 python-jose
 python-multipart
 pydantic[email]
 pydantic_settings
 python-dotenv
+bcrypt==3.2.2
