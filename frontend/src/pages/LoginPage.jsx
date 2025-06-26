@@ -2,13 +2,17 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { loginUser } from '../api/auth';
 import { Loader2 } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
+import { loginUser } from '../api/apiClient';
 
 function LoginPage() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const { login } = useAuth();
   const navigate = useNavigate();
+  
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -18,7 +22,7 @@ function LoginPage() {
     try {
       const data = await loginUser({ username, password });
       // In a real app, you'd store this token in context/state management
-      console.log('Login successful, token:', data.access_token);
+      login(response.data.access_token);
       alert('Login successful! You can now use the extension.');
       navigate(`/profile/${username}`);
     } catch (err) {
