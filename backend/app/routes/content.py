@@ -31,3 +31,14 @@ async def create_content_item(
 async def get_user_content(username: str):
     items = await db.content.find({"owner_username": username}).to_list(length=100)
     return items
+
+@router.get("/feed", response_model=List[ContentItemInDB])
+async def get_my_feed(current_user: dict = Depends(get_current_user)):
+    following_list = current_user.get("following", [])
+    
+    # Find content where the owner is in the user's following list
+    cursor = db.content.find({"owner_username": {"$in": following_list}})
+    
+    # Sort by most recent and limit to 100
+    feed_items = await cursor.sort("created_at", -1).to_list(length=100)
+    return feed_items
