@@ -21,7 +21,6 @@ function LoginPage() {
 
     try {
       const data = await loginUser({ username, password });
-      // In a real app, you'd store this token in context/state management
       login(response.data.access_token);
       alert('Login successful! You can now use the extension.');
       navigate(`/profile/${username}`);
