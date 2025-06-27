@@ -107,22 +107,65 @@ logoutBtn.addEventListener('click', async () => {
     window.location.reload();
 });
 
-summarizeBtn.addEventListener('click', async () => {
-    if (!currentPageInfo) return;
-    
-    showSpinner(summarizeBtn);
-    setStatus('Initializing model...');
 
-    chrome.runtime.sendMessage({ type: 'summarize', payload: currentPageInfo }, (response) => {
-        if (response.success) {
-            setStatus('Saved to your list!', 'success');
-        } else {
-            setStatus(response.error || 'An unknown error occurred.', 'error');
-        }
-        showSpinner(summarizeBtn, false);
-        summarizeBtn.disabled = true; // Prevent re-summarizing
-    });
+
+// summarizeBtn.addEventListener('click', async () => {
+   
+    
+//     showSpinner(summarizeBtn);
+//     setStatus('Waking background...');
+
+//      try {
+//     await chrome.runtime.sendMessage({ type: 'ping' });
+//   } catch {}
+
+
+//     setStatus('Initializing model...');
+
+//     chrome.runtime.sendMessage({ type: 'summarize', payload: currentPageInfo }, (response) => {
+//         if (chrome.runtime.lastError) {
+//             setStatus('Background not ready. Try again.', 'error');
+//         } else if (response.success) {
+//             setStatus('Saved to your list!', 'success');
+//         } else {
+//             setStatus(response.error || 'An unknown error occurred.', 'error');
+//         }
+//         showSpinner(summarizeBtn, false);
+//         summarizeBtn.disabled = true; // Prevent re-summarizing
+//     });
+//});
+
+
+summarizeBtn.addEventListener('click', async () => {
+  showSpinner(summarizeBtn);
+  setStatus('Waking background…');
+
+  try {
+    await chrome.runtime.sendMessage({ type: 'ping' });
+    console.log('[popup] ping success');
+  } catch (err) {
+    console.warn('[popup] ping error:', chrome.runtime.lastError);
+  }
+
+  setStatus('Initializing model…');
+
+  chrome.runtime.sendMessage({ type: 'summarize', payload: currentPageInfo }, (response) => {
+    console.log('[popup] summarize response:', response);
+
+    if (chrome.runtime.lastError) {
+      setStatus('Background unavailable. Try again.', 'error');
+    } else if (response?.success) {
+      setStatus('Saved successfully!', 'success');
+    } else {
+      setStatus(response?.error || 'Unknown error', 'error');
+    }
+    showSpinner(summarizeBtn, false);
+    summarizeBtn.disabled = true;
+  });
 });
+
+
+
 
 // Listener for progress from background script
 chrome.runtime.onMessage.addListener((message) => {

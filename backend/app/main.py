@@ -14,7 +14,7 @@ app.add_middleware(
 )
 
 app.include_router(auth.router, tags=["auth"])
-# app.include_router(content.router, tags=["content"])
+app.include_router(content.router, tags=["content"])
 
 @app.get("/")
 def read_root():
