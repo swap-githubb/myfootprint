@@ -1,20 +1,21 @@
-// Import directly from the NPM package. Vite will handle the bundling.
+// We no longer need any youtube transcript libraries.
 import { CreateMLCEngine } from "@mlc-ai/web-llm";
 
+// --- Configuration ---
 const API_BASE_URL = "http://localhost:8000";
-const SELECTED_MODEL = "TinyLlama-1.1B-Chat-v0.4-q4f16_1-MLC";
+const SELECTED_MODEL = "gemma-2b-it-q4f32_1-MLC";
+const TRANSCRIPT_SERVICE_URL = "https://youtubetotranscript.com/transcript?v=";
 
-let engine; // This will hold our initialized LLM engine.
-let engine_init_promise; // A promise to prevent multiple initializations at once.
+// --- Global variables ---
+let engine;
+let engine_init_promise;
 
-// This function initializes the engine and is called only when needed.
 async function getEngine() {
   if (!engine_init_promise) {
-    console.log("[background] Initializing new MLCEngine...");
+    console.log(`[background] Initializing new MLCEngine with model: ${SELECTED_MODEL}`);
     engine_init_promise = CreateMLCEngine(SELECTED_MODEL, {
       initProgressCallback: (progress) => {
         console.log("[background] Init progress:", progress.text);
-        // Send progress updates to the popup.
         chrome.runtime.sendMessage({ type: "progress", data: progress.text });
       },
     });
@@ -24,10 +25,53 @@ async function getEngine() {
   return engine;
 }
 
-// The main message listener.
+/**
+ * THIS IS THE NEW, SMARTER PARSING FUNCTION
+ * It specifically targets the correct paragraphs and spans.
+ * @param {string} html - The raw HTML content of the page.
+ * @returns {string} The extracted transcript text, joined by spaces.
+ */
+function parseTranscriptFromHTML(html) {
+  // 1. Find all the paragraphs that contain the actual transcript content.
+  // We look for `<p class="inline NA text-primary-content">`
+  const paragraphRegex = /<p class="inline NA text-primary-content">([\s\S]*?)<\/p>/g;
+  
+  // 2. Inside those paragraphs, find the spans with the class "transcript-segment".
+  const spanRegex = /<span[^>]*class="transcript-segment"[^>]*>([\s\S]*?)<\/span>/g;
+  
+  let paragraphMatch;
+  const allText = [];
+
+  // Iterate over all matching paragraphs
+  while ((paragraphMatch = paragraphRegex.exec(html)) !== null) {
+    const paragraphContent = paragraphMatch[1];
+    let spanMatch;
+    
+    // Iterate over all matching spans within the current paragraph
+    while ((spanMatch = spanRegex.exec(paragraphContent)) !== null) {
+      // Clean up the text inside the span
+      const text = spanMatch[1]
+        .replace(/<[^>]+>/g, '') // Strip any remaining HTML tags
+        .replace(/\s+/g, ' ')      // Replace multiple whitespace chars with a single space
+        .trim();
+        
+      if (text) {
+        allText.push(text);
+      }
+    }
+  }
+
+  if (allText.length === 0) {
+    console.warn("[background] Scraping: Found the page, but no 'transcript-segment' spans inside the correct paragraphs.");
+  }
+
+  return allText.join(' ');
+}
+
+
+// --- Main Event Listener ---
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.type === 'ping') {
-    // A simple way for the popup to check if the background is active.
     sendResponse({ success: true });
     return;
   }
@@ -35,25 +79,54 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.type === "summarize") {
     (async () => {
       try {
-        // 1. Get the page content.
         const { tab, contentType } = request.payload;
-        const [injectionResult] = await chrome.scripting.executeScript({
-          target: { tabId: tab.id },
-          function: () => document.body.innerText,
-        });
-        const pageText = injectionResult.result.substring(0, 4000);
+        let pageText = "";
 
-        // 2. Get the LLM engine (it will initialize if it hasn't already).
+        if (tab.url.includes("youtube.com/watch")) {
+          console.log("[background] YouTube video detected. Using scraping method.");
+          const url = new URL(tab.url);
+          const videoId = url.searchParams.get('v');
+
+          if (!videoId) {
+            throw new Error("Could not parse a valid YouTube Video ID from the URL.");
+          }
+          
+          const targetUrl = TRANSCRIPT_SERVICE_URL + videoId;
+          console.log(`[background] Scraping target URL: ${targetUrl}`);
+
+          try {
+            const response = await fetch(targetUrl);
+            if (!response.ok) {
+              throw new Error(`Failed to fetch transcript page, status: ${response.status}`);
+            }
+            const html = await response.text();
+            pageText = parseTranscriptFromHTML(html);
+          } catch (e) {
+            console.error("[background] Scraping failed:", e.message);
+            throw new Error("The transcript scraping service may be down or has blocked the request.");
+          }
+        } else {
+          console.log("[background] Article/page detected. Scraping page text...");
+          const [injectionResult] = await chrome.scripting.executeScript({
+            target: { tabId: tab.id },
+            function: () => document.body.innerText,
+          });
+          pageText = injectionResult.result || "";
+        }
+
+        if (!pageText || pageText.trim().length < 100) {
+          throw new Error("Could not extract enough readable content to summarize.");
+        }
+        
+        const contentToSummarize = pageText.substring(0, 4000);
         const llm = await getEngine();
         
-        // 3. Create the prompt and generate the summary directly. NO self-messaging.
-        const prompt = `You are an expert summarizer. Provide a concise, two-sentence summary of the following ${contentType}: \n\n${pageText}`;
+        const prompt = `You are an expert summarizer. Provide a brief summary of the page content provided to you. You should provide 3 paragraphs : 1.Introduction 2.Main Summary 3.Conclusion (Exclude to give any such content that you think should not be a part of the summary)\n So this is the provided content to you -> ${contentType}: \n\n${contentToSummarize}`;
         const summaryResponse = await llm.chat.completions.create({
           messages: [{ "role": "user", "content": prompt }],
         });
         const summary = summaryResponse.choices[0].message.content;
         
-        // 4. Send the data to your backend API.
         const { token } = await chrome.storage.local.get("token");
         const apiResponse = await fetch(`${API_BASE_URL}/content`, {
           method: "POST",
@@ -71,15 +144,14 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           throw new Error(errData.detail || 'Failed to save to server.');
         }
 
-        // 5. Send the successful result back to the popup.
         sendResponse({ success: true, summary: summary });
+
       } catch (err) {
         console.error("[background] Summarization pipeline failed:", err);
         sendResponse({ success: false, error: err.message });
       }
     })();
     
-    // Return true because we are responding asynchronously.
     return true;
   }
 });

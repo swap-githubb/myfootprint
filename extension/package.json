@@ -15,5 +15,8 @@
     "@crxjs/vite-plugin": "^2.0.2",
     "@mlc-ai/web-llm": "^0.2.79",
     "vite": "^7.0.0"
+  },
+  "dependencies": {
+    "@danielxceron/youtube-transcript": "^1.2.3"
   }
 }
