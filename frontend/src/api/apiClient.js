@@ -1,59 +1,3 @@
-// import axios from 'axios';
-
-// const apiClient = axios.create({
-//   baseURL: 'http://localhost:8000',
-// });
-
-// // Interceptor to add the auth token to every subsequent request
-// apiClient.interceptors.request.use((config) => {
-//   const token = localStorage.getItem('authToken');
-//   if (token) {
-//     config.headers.Authorization = `Bearer ${token}`;
-//   }
-//   return config;
-// }, (error) => {
-//   return Promise.reject(error);
-// });
-
-// // --- Auth Functions ---
-// export const registerUser = async (credentials) => {
-//   const response = await apiClient.post('/users/register', credentials);
-//   return response.data;
-// };
-
-// // THIS IS THE CORRECTED LOGIN FUNCTION
-// export const loginUser = async (credentials) => {
-//   const formData = new URLSearchParams();
-//   formData.append('username', credentials.username);
-//   formData.append('password', credentials.password);
-
-//   const response = await apiClient.post('/token', formData, {
-//     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-//   });
-//   return response.data;
-// };
-
-// // --- Users & Follows ---
-// export const getUserProfile = async (username) => {
-//   const response = await apiClient.get(`/users/${username}`);
-//   return response.data;
-// }
-// export const followUser = (username) => apiClient.post(`/users/${username}/follow`);
-// export const unfollowUser = (username) => apiClient.delete(`/users/${username}/follow`);
-
-// // --- Content & Feed ---
-// export const getContentForUser = async (username) => {
-//   const response = await apiClient.get(`/users/${username}/content`);
-//   return response.data;
-// };
-// export const getFeed = async () => {
-//   const response = await apiClient.get('/feed');
-//   return response.data;
-// };
-
-
-
-
 import axios from 'axios';
 
 const apiClient = axios.create({
@@ -122,6 +66,11 @@ export const followUser = (username) => apiClient.post(`/users/${username}/follo
  */
 export const unfollowUser = (username) => apiClient.delete(`/users/${username}/follow`);
 
+
+export const searchUsers = async (query) => {
+  const response = await apiClient.get(`/search/users?query=${query}`);
+  return response.data;
+};
 
 // --- CONTENT & FEED FUNCTIONS ---
 
