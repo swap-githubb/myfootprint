@@ -46,16 +46,30 @@ async def create_content_item(
 
 @router.get("/users/{username}/content", response_model=List[ContentItemInDB])
 async def get_user_content(username: str):
-    items = await db.content.find({"owner_username": username}).to_list(length=100)
-    return items
+    # Fetch all documents for the user from the database.
+    items_cursor = db.content.find({"owner_username": username})
+    
+    # The cursor returns raw documents. We need to process them.
+    results = []
+    for item in await items_cursor.to_list(length=100):
+        # THIS IS THE FIX: Manually convert the ObjectId to a string
+        # before adding it to our results list.
+        item["_id"] = str(item["_id"])
+        results.append(item)
+        
+    # Return the processed list. Pydantic will now be able to validate it successfully.
+    return results
 
 @router.get("/feed", response_model=List[ContentItemInDB])
 async def get_my_feed(current_user: dict = Depends(get_current_user)):
     following_list = current_user.get("following", [])
     
-    # Find content where the owner is in the user's following list
     cursor = db.content.find({"owner_username": {"$in": following_list}})
     
-    # Sort by most recent and limit to 100
-    feed_items = await cursor.sort("created_at", -1).to_list(length=100)
-    return feed_items
+    # Apply the same fix here.
+    results = []
+    for item in await cursor.sort("created_at", -1).to_list(length=100):
+        item["_id"] = str(item["_id"])
+        results.append(item)
+        
+    return results
