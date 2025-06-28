@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-// import { loginUser } from '../api/auth';
 import { Loader2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { loginUser } from '../api/apiClient';
@@ -20,12 +19,18 @@ function LoginPage() {
     setError('');
 
     try {
+      // 1. Call the API to get the token
       const data = await loginUser({ username, password });
-      login(response.data.access_token);
-      alert('Login successful! You can now use the extension.');
+      
+      // 2. Pass the token to the context to update the state
+      login(data.access_token);
+      
+      // 3. Navigate to the profile page
       navigate(`/profile/${username}`);
+
     } catch (err) {
-      setError(err.response?.data?.detail || 'Login failed. Please try again.');
+      // This will now correctly catch actual API errors (like 401)
+      setError(err.response?.data?.detail || 'Login failed. Please check your credentials.');
     } finally {
       setLoading(false);
     }

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { registerUser } from '../api/auth';
+import { registerUser } from '../api/apiClient';
 import { Loader2 } from 'lucide-react';
 
 function RegisterPage() {
