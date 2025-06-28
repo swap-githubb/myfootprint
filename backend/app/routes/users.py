@@ -2,6 +2,8 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from ..core.security import get_current_user
 from ..db.database import db
 from ..models.user import UserPublic
+from typing import List
+import re
 
 router = APIRouter()
 
@@ -54,3 +56,58 @@ async def unfollow_user(username_to_unfollow: str, current_user: dict = Depends(
         {"username": username_to_unfollow},
         {"$pull": {"followers": current_user["username"]}}
     )
+
+
+@router.get("/search/users", response_model=List[UserPublic])
+async def search_for_users(query: str, current_user: dict = Depends(get_current_user)):
+    if not query:
+        return []
+
+    # Use a case-insensitive regular expression for the search
+    # This finds usernames that *contain* the query string
+    regex = re.compile(f'.*{re.escape(query)}.*', re.IGNORECASE)
+    
+    # Find users matching the regex, but exclude the current user from the results
+    cursor = db.users.find({
+        "username": {"$regex": regex, "$ne": current_user["username"]}
+    })
+    
+    users = await cursor.to_list(length=20) # Limit results to 20
+
+    # We need to process the results to match the UserPublic model
+    results = []
+    current_user_following = current_user.get("following", [])
+
+    for user in users:
+        is_following = user["username"] in current_user_following
+        results.append(
+            UserPublic(
+                username=user["username"],
+                email=user["email"], # You might want to remove email from public search results later
+                following_count=len(user.get("following", [])),
+                followers_count=len(user.get("followers", [])),
+                is_followed_by_current_user=is_following
+            )
+        )
+    
+    return results
+
+
+
+# NEW ENDPOINT TO GET THE LIST OF USERS SOMEONE IS FOLLOWING
+@router.get("/users/{username}/following", response_model=List[str])
+async def get_following_list(username: str):
+    user = await db.users.find_one({"username": username})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    return user.get("following", [])
+
+# NEW ENDPOINT TO GET THE LIST OF A USER'S FOLLOWERS
+@router.get("/users/{username}/followers", response_model=List[str])
+async def get_followers_list(username: str):
+    user = await db.users.find_one({"username": username})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    return user.get("followers", [])

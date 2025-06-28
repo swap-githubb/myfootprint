@@ -72,6 +72,16 @@ export const searchUsers = async (query) => {
   return response.data;
 };
 
+export const getFollowing = async (username) => {
+  const response = await apiClient.get(`/users/${username}/following`);
+  return response.data;
+};
+
+export const getFollowers = async (username) => {
+  const response = await apiClient.get(`/users/${username}/followers`);
+  return response.data;
+};
+
 // --- CONTENT & FEED FUNCTIONS ---
 
 /**

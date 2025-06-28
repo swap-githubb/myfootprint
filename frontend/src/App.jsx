@@ -6,6 +6,8 @@ import RegisterPage from './pages/RegisterPage';
 import Navbar from './components/Navbar';
 import FeedPage from './pages/FeedPage';
 import SearchPage from './pages/SearchPage';
+import FollowingPage from './pages/FollowingPage';
+import FollowersPage from './pages/FollowersPage';
 
 function App() {
   return (
@@ -19,6 +21,8 @@ function App() {
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/profile/:username" element={<ProfilePage />} />
           <Route path="/search" element={<SearchPage />}/>
+           <Route path="/profile/:username/following" element={<FollowingPage />} />
+          <Route path="/profile/:username/followers" element={<FollowersPage />} />
         </Routes>
       </main>
     </Router>

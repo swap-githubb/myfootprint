@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import FollowButton from './FollowButton';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -11,9 +12,14 @@ function ProfileHeader({ profile }) {
       <div className="flex flex-col md:flex-row items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-white">{profile.username}</h1>
-          <div className="flex items-center gap-4 mt-2 text-slate-400">
-            <span><strong className="text-white">{profile.following_count}</strong> Following</span>
-            <span><strong className="text-white">{profile.followers_count}</strong> Followers</span>
+          <div className="flex items-center gap-6 mt-2 text-slate-400">
+            {/* Make these clickable links */}
+            <Link to={`/profile/${profile.username}/following`} className="hover:text-white">
+              <strong className="text-white">{profile.following_count}</strong> Following
+            </Link>
+            <Link to={`/profile/${profile.username}/followers`} className="hover:text-white">
+              <strong className="text-white">{profile.followers_count}</strong> Followers
+            </Link>
           </div>
         </div>
         <div>
