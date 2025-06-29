@@ -121,7 +121,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         const contentToSummarize = pageText.substring(0, 4000);
         const llm = await getEngine();
         
-        const prompt = `You are an expert summarizer. Provide a brief summary of the page content provided to you. You should provide 3 paragraphs : 1.Introduction 2.Main Summary 3.Conclusion (Exclude to give any such content that you think should not be a part of the summary)\n So this is the provided content to you -> ${contentType}: \n\n${contentToSummarize}`;
+        const prompt = `You are an expert summarizer. Provide a brief summary of the page content provided to you.You should provide the most important points of summary(Around 7 to 8 most important points with numbering).\n Just start your output with "Here is a detailed summary: ".\n At last you also have to give the rating of the content as per you intelligence (out of 10).\n Use Markdown for formatting. For example:
+- Use bullet points for lists.
+- Use **bold** for emphasis.\n So this is the provided content to you -> ${contentType}: \n\n${contentToSummarize}`;
         const summaryResponse = await llm.chat.completions.create({
           messages: [{ "role": "user", "content": prompt }],
         });
