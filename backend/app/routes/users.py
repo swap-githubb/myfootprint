@@ -7,6 +7,8 @@ import re
 
 router = APIRouter()
 
+
+# This route fetches the public profile of a user
 @router.get("/users/{username}", response_model=UserPublic)
 async def get_user_profile(username: str, current_user: dict = Depends(get_current_user)):
     user = await db.users.find_one({"username": username})
@@ -24,6 +26,8 @@ async def get_user_profile(username: str, current_user: dict = Depends(get_curre
         is_followed_by_current_user=is_following
     )
 
+
+# This route allows a user to follow another user
 @router.post("/users/{username_to_follow}/follow", status_code=status.HTTP_204_NO_CONTENT)
 async def follow_user(username_to_follow: str, current_user: dict = Depends(get_current_user)):
     if username_to_follow == current_user["username"]:
@@ -44,6 +48,8 @@ async def follow_user(username_to_follow: str, current_user: dict = Depends(get_
         {"$addToSet": {"followers": current_user["username"]}}
     )
 
+
+# This route allows a user to unfollow another user
 @router.delete("/users/{username_to_unfollow}/follow", status_code=status.HTTP_204_NO_CONTENT)
 async def unfollow_user(username_to_unfollow: str, current_user: dict = Depends(get_current_user)):
     # Remove from current user's "following" list
@@ -58,13 +64,14 @@ async def unfollow_user(username_to_unfollow: str, current_user: dict = Depends(
     )
 
 
+
+# This route allows searching for users by username
 @router.get("/search/users", response_model=List[UserPublic])
 async def search_for_users(query: str, current_user: dict = Depends(get_current_user)):
     if not query:
         return []
 
     # Use a case-insensitive regular expression for the search
-    # This finds usernames that *contain* the query string
     regex = re.compile(f'.*{re.escape(query)}.*', re.IGNORECASE)
     
     # Find users matching the regex, but exclude the current user from the results
@@ -72,7 +79,7 @@ async def search_for_users(query: str, current_user: dict = Depends(get_current_
         "username": {"$regex": regex, "$ne": current_user["username"]}
     })
     
-    users = await cursor.to_list(length=20) # Limit results to 20
+    users = await cursor.to_list(length=20) 
 
     # We need to process the results to match the UserPublic model
     results = []
@@ -83,7 +90,7 @@ async def search_for_users(query: str, current_user: dict = Depends(get_current_
         results.append(
             UserPublic(
                 username=user["username"],
-                email=user["email"], # You might want to remove email from public search results later
+                email=user["email"],
                 following_count=len(user.get("following", [])),
                 followers_count=len(user.get("followers", [])),
                 is_followed_by_current_user=is_following
@@ -94,7 +101,7 @@ async def search_for_users(query: str, current_user: dict = Depends(get_current_
 
 
 
-# NEW ENDPOINT TO GET THE LIST OF USERS SOMEONE IS FOLLOWING
+# This routes fetches the list of users that the current user is following
 @router.get("/users/{username}/following", response_model=List[str])
 async def get_following_list(username: str):
     user = await db.users.find_one({"username": username})
@@ -103,7 +110,9 @@ async def get_following_list(username: str):
     
     return user.get("following", [])
 
-# NEW ENDPOINT TO GET THE LIST OF A USER'S FOLLOWERS
+
+
+# This routes fetches the list of users who are following the current user
 @router.get("/users/{username}/followers", response_model=List[str])
 async def get_followers_list(username: str):
     user = await db.users.find_one({"username": username})

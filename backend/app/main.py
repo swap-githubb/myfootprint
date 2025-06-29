@@ -4,10 +4,10 @@ from .routes import auth, content, users
 
 app = FastAPI()
 
-# IMPORTANT: Configure CORS
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"], # Your React frontend URL
+    allow_origins=["http://localhost:5173"], # Frontend URL
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -19,4 +19,4 @@ app.include_router(users.router, tags=["users"])
 
 @app.get("/")
 def read_root():
-    return {"Hello": "World"}
+    return {"Hello": "Welcome to MyFootprint App API!"}

@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Content Tracker",
+  "name": "Content Summarizer",
   "version": "1.0.0",
-  "description": "Summarize content with a local LLM.",
+  "description": "Summarize content with a local LLM and see your summaries in MyFootprint application.",
   "permissions": [
     "storage",
     "scripting",

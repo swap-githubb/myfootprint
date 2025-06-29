@@ -18,7 +18,7 @@ function Navbar() {
         <div className="flex items-center justify-between h-16">
           <Link to="/" className="flex items-center gap-2 text-xl font-bold text-white">
             <Lightbulb className="text-sky-500" />
-            Showcase
+            MyFootprint
           </Link>
           <div className="flex items-center gap-4">
             {isAuthenticated ? (

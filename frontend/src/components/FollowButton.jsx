@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { followUser, unfollowUser } from '../api/apiClient';
 import { Loader2, UserPlus, UserCheck } from 'lucide-react';
 
+
+// 
 function FollowButton({ usernameToFollow, initialIsFollowing }) {
   const [isFollowing, setIsFollowing] = useState(initialIsFollowing);
   const [isLoading, setIsLoading] = useState(false);

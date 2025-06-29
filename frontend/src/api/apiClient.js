@@ -16,8 +16,6 @@ apiClient.interceptors.request.use((config) => {
 });
 
 
-// --- AUTH FUNCTIONS ---
-
 /**
  * Registers a new user.
  * @param {object} credentials - { username, email, password }
@@ -43,7 +41,6 @@ export const loginUser = async (credentials) => {
 };
 
 
-// --- USERS & FOLLOWS FUNCTIONS ---
 
 /**
  * Fetches a user's public profile information.
@@ -66,23 +63,24 @@ export const followUser = (username) => apiClient.post(`/users/${username}/follo
  */
 export const unfollowUser = (username) => apiClient.delete(`/users/${username}/follow`);
 
-
+// For searching users by username
 export const searchUsers = async (query) => {
   const response = await apiClient.get(`/search/users?query=${query}`);
   return response.data;
 };
 
+// For getting the list of users that the user is following
 export const getFollowing = async (username) => {
   const response = await apiClient.get(`/users/${username}/following`);
   return response.data;
 };
 
+// For getting the list of followers for the user
 export const getFollowers = async (username) => {
   const response = await apiClient.get(`/users/${username}/followers`);
   return response.data;
 };
 
-// --- CONTENT & FEED FUNCTIONS ---
 
 /**
  * Fetches all content items for a specific user.

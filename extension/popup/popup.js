@@ -1,3 +1,4 @@
+import { jwtDecode } from 'jwt-decode';
 // DOM Elements
 const loginView = document.getElementById('login-view');
 const summaryView = document.getElementById('summary-view');
@@ -14,7 +15,7 @@ const logoutBtn = document.getElementById('logout-btn');
 const API_BASE_URL = "http://localhost:8000";
 let currentPageInfo = null;
 
-// --- Helper Functions ---
+
 function showSpinner(button, show = true) {
     const spinner = button.querySelector('.spinner');
     const text = button.querySelector('.btn-text');
@@ -31,10 +32,11 @@ function showSpinner(button, show = true) {
 
 function setStatus(message, type = 'info') {
     statusMessage.textContent = message;
-    statusMessage.className = type; // 'success', 'error', or ''
+    statusMessage.className = type; 
 }
 
-// --- Page Analysis ---
+// Function to analyze the current page and determine if it has content to summarize
+// This function checks for articles or videos and updates the UI accordingly.
 async function analyzeCurrentPage() {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     if (!tab.url || !tab.url.startsWith('http')) {
@@ -51,7 +53,6 @@ async function analyzeCurrentPage() {
             const hasVideo = !!document.querySelector('video');
             if (hasVideo) return 'video';
             if (hasArticle) return 'article';
-            // Fallback: check text length
             return document.body.innerText.length > 2000 ? 'article' : null;
         }
     });
@@ -68,16 +69,29 @@ async function analyzeCurrentPage() {
     }
 }
 
-// --- Event Handlers ---
+
 document.addEventListener('DOMContentLoaded', async () => {
     const { token } = await chrome.storage.local.get("token");
     if (token) {
-        loginView.style.display = 'none';
-        summaryView.style.display = 'block';
-        appFooter.style.display = 'flex';
-        // A real app would decode the JWT to get username, but this is fine for now
-        usernameDisplay.textContent = 'user';
-        await analyzeCurrentPage();
+        try {
+            const decodedToken = jwtDecode(token);
+            const username = decodedToken.sub;
+            usernameDisplay.textContent = username;
+
+           
+            loginView.style.display = 'none';
+            summaryView.style.display = 'block';
+            appFooter.style.display = 'flex';
+            await analyzeCurrentPage();
+
+        } catch (error) {
+            console.error("Invalid token found:", error);
+            await chrome.storage.local.remove("token");
+            // Show the login view
+            loginView.style.display = 'block';
+            summaryView.style.display = 'none';
+            appFooter.style.display = 'none';
+        }
     }
 });
 
@@ -108,34 +122,6 @@ logoutBtn.addEventListener('click', async () => {
 });
 
 
-
-// summarizeBtn.addEventListener('click', async () => {
-   
-    
-//     showSpinner(summarizeBtn);
-//     setStatus('Waking background...');
-
-//      try {
-//     await chrome.runtime.sendMessage({ type: 'ping' });
-//   } catch {}
-
-
-//     setStatus('Initializing model...');
-
-//     chrome.runtime.sendMessage({ type: 'summarize', payload: currentPageInfo }, (response) => {
-//         if (chrome.runtime.lastError) {
-//             setStatus('Background not ready. Try again.', 'error');
-//         } else if (response.success) {
-//             setStatus('Saved to your list!', 'success');
-//         } else {
-//             setStatus(response.error || 'An unknown error occurred.', 'error');
-//         }
-//         showSpinner(summarizeBtn, false);
-//         summarizeBtn.disabled = true; // Prevent re-summarizing
-//     });
-//});
-
-
 summarizeBtn.addEventListener('click', async () => {
   showSpinner(summarizeBtn);
   setStatus('Waking background…');
@@ -163,8 +149,6 @@ summarizeBtn.addEventListener('click', async () => {
     summarizeBtn.disabled = true;
   });
 });
-
-
 
 
 // Listener for progress from background script

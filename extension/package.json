@@ -17,6 +17,7 @@
     "vite": "^7.0.0"
   },
   "dependencies": {
-    "@danielxceron/youtube-transcript": "^1.2.3"
+    "@danielxceron/youtube-transcript": "^1.2.3",
+    "jwt-decode": "^4.0.0"
   }
 }

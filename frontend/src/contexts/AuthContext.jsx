@@ -1,52 +1,3 @@
-// import { createContext, useState, useContext, useEffect } from 'react';
-// import { jwtDecode } from 'jwt-decode';
-
-// const AuthContext = createContext();
-
-// export function useAuth() {
-//   return useContext(AuthContext);
-// }
-
-// export function AuthProvider({ children }) {
-//   const [authToken, setAuthToken] = useState(() => localStorage.getItem('authToken'));
-//   const [currentUser, setCurrentUser] = useState(null);
-
-//   useEffect(() => {
-//     if (authToken) {
-//       try {
-//         const decoded = jwtDecode(authToken);
-//         setCurrentUser({ username: decoded.sub });
-//         localStorage.setItem('authToken', authToken);
-//       } catch (error) {
-//         setCurrentUser(null);
-//         localStorage.removeItem('authToken');
-//       }
-//     } else {
-//         setCurrentUser(null);
-//         localStorage.removeItem('authToken');
-//     }
-//   }, [authToken]);
-
-//   const login = (token) => {
-//     setAuthToken(token);
-//   };
-
-//   const logout = () => {
-//     setAuthToken(null);
-//   };
-
-//   const value = {
-//     currentUser,
-//     login,
-//     logout,
-//     isAuthenticated: !!currentUser,
-//   };
-
-//   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-// }
-
-
-
 import { createContext, useState, useContext, useEffect } from 'react';
 import { jwtDecode } from 'jwt-decode';
 
@@ -80,12 +31,12 @@ export function AuthProvider({ children }) {
     }
   }, [authToken]);
 
-  // THIS IS THE FIX. IT'S NOW ASYNC.
-  const login = (token) => {
+  
+    const login = (token) => {
     localStorage.setItem('authToken', token);
     const decoded = jwtDecode(token);
     setCurrentUser({ username: decoded.sub });
-    setAuthToken(token); // Trigger re-render for components that use the token
+    setAuthToken(token); 
   };
 
   const logout = () => {

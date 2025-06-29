@@ -1,12 +1,11 @@
-// We no longer need any youtube transcript libraries.
 import { CreateMLCEngine } from "@mlc-ai/web-llm";
 
-// --- Configuration ---
+
 const API_BASE_URL = "http://localhost:8000";
 const SELECTED_MODEL = "gemma-2b-it-q4f32_1-MLC";
-const TRANSCRIPT_SERVICE_URL = "https://youtubetotranscript.com/transcript?v=";
+const TRANSCRIPT_SERVICE_URL = "https://youtubetotranscript.com/transcript?v="; // For youtube video transcription scraping
 
-// --- Global variables ---
+
 let engine;
 let engine_init_promise;
 
@@ -25,18 +24,14 @@ async function getEngine() {
   return engine;
 }
 
+
+// Web scraping for YouTube video transcripts for summary generation of video content.
 /**
- * THIS IS THE NEW, SMARTER PARSING FUNCTION
- * It specifically targets the correct paragraphs and spans.
  * @param {string} html - The raw HTML content of the page.
  * @returns {string} The extracted transcript text, joined by spaces.
  */
 function parseTranscriptFromHTML(html) {
-  // 1. Find all the paragraphs that contain the actual transcript content.
-  // We look for `<p class="inline NA text-primary-content">`
   const paragraphRegex = /<p class="inline NA text-primary-content">([\s\S]*?)<\/p>/g;
-  
-  // 2. Inside those paragraphs, find the spans with the class "transcript-segment".
   const spanRegex = /<span[^>]*class="transcript-segment"[^>]*>([\s\S]*?)<\/span>/g;
   
   let paragraphMatch;
@@ -49,7 +44,7 @@ function parseTranscriptFromHTML(html) {
     
     // Iterate over all matching spans within the current paragraph
     while ((spanMatch = spanRegex.exec(paragraphContent)) !== null) {
-      // Clean up the text inside the span
+      
       const text = spanMatch[1]
         .replace(/<[^>]+>/g, '') // Strip any remaining HTML tags
         .replace(/\s+/g, ' ')      // Replace multiple whitespace chars with a single space
@@ -69,7 +64,9 @@ function parseTranscriptFromHTML(html) {
 }
 
 
-// --- Main Event Listener ---
+
+
+// Main Event Listener
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.type === 'ping') {
     sendResponse({ success: true });

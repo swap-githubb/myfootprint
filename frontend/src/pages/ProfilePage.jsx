@@ -34,7 +34,6 @@ function ProfilePage() {
       }
     };
     
-    // Only fetch data if a username is present in the URL.
     if (username) {
       fetchAllData();
     }

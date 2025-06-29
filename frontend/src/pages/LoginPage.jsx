@@ -19,17 +19,16 @@ function LoginPage() {
     setError('');
 
     try {
-      // 1. Call the API to get the token
+      // Call the API to get the token
       const data = await loginUser({ username, password });
       
-      // 2. Pass the token to the context to update the state
+      // Pass the token to the context to update the state
       login(data.access_token);
       
-      // 3. Navigate to the profile page
+      // Navigate to the profile page
       navigate(`/profile/${username}`);
 
     } catch (err) {
-      // This will now correctly catch actual API errors (like 401)
       setError(err.response?.data?.detail || 'Login failed. Please check your credentials.');
     } finally {
       setLoading(false);
